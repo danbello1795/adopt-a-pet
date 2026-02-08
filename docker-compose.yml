@@ -1,0 +1,51 @@
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
+    container_name: adopt-a-pet-es
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.security.enrollment.enabled=false
+      - xpack.security.http.ssl.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - cluster.name=adopt-a-pet
+    ports:
+      - "9200:9200"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - adopt-net
+
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: adopt-a-pet-app
+    ports:
+      - "8000:8000"
+    environment:
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - DATA_DIR=/app/data
+      - KAGGLE_USERNAME=${KAGGLE_USERNAME}
+      - KAGGLE_KEY=${KAGGLE_KEY}
+    volumes:
+      - app_data:/app/data
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - adopt-net
+
+volumes:
+  es_data:
+  app_data:
+
+networks:
+  adopt-net:
+    driver: bridge
