@@ -13,23 +13,17 @@ from PIL import Image
 from src.data.schemas import SearchResponse
 
 router = APIRouter()
-templates = Jinja2Templates(
-    directory=str(Path(__file__).parent / "templates")
-)
+templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 
 
 @router.get("/", response_class=HTMLResponse)
 async def home(request: Request) -> HTMLResponse:
     """Landing page with text search bar and image upload form."""
-    return templates.TemplateResponse(
-        "home.html", {"request": request}
-    )
+    return templates.TemplateResponse("home.html", {"request": request})
 
 
 @router.get("/search", response_class=HTMLResponse)
-async def text_search(
-    request: Request, q: str = "", top_k: int = 20
-) -> HTMLResponse:
+async def text_search(request: Request, q: str = "", top_k: int = 20) -> HTMLResponse:
     """Search pets by text query and render results page.
 
     Args:
@@ -58,8 +52,8 @@ async def text_search(
 @router.post("/search/image", response_class=HTMLResponse)
 async def image_search(
     request: Request,
-    file: UploadFile = File(...),
-    top_k: int = Form(20),
+    file: UploadFile = File(...),  # noqa: B008
+    top_k: int = Form(20),  # noqa: B008
 ) -> HTMLResponse:
     """Search pets by uploaded image and render results page.
 
@@ -103,9 +97,7 @@ async def health_check(request: Request) -> dict:
 
 
 @router.get("/api/search", response_model=SearchResponse)
-async def api_text_search(
-    request: Request, q: str, top_k: int = 20
-) -> SearchResponse:
+async def api_text_search(request: Request, q: str, top_k: int = 20) -> SearchResponse:
     """JSON API endpoint for text search.
 
     Args:

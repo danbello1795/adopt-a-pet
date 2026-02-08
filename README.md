@@ -1,51 +1,115 @@
 # MLE Test: Adopt a Pet
 
-Pet adoption recommendation system - ML Engineering test project.
+Cross-modal pet search system using CLIP embeddings and Elasticsearch kNN. Search for adoptable pets by text description or by uploading a photo.
 
-## Project Overview
+## Architecture
 
-This project aims to build a machine learning system that recommends pets for adoption based on user preferences and pet characteristics.
+```
+Browser --> FastAPI + Jinja2 UI --> PetSearcher
+                                      |
+                                      +-- CLIPEncoder (ViT-B-32, 512-dim)
+                                      +-- Elasticsearch 8.x (kNN dense_vector)
+```
+
+- **Text search**: query -> CLIP text encoder -> kNN on text_embedding (boost=1.5) + image_embedding (boost=1.0)
+- **Image search**: upload -> CLIP image encoder -> kNN on image_embedding (boost=2.0) + text_embedding (boost=0.5)
 
 ## Project Structure
 
 ```
 adopt-a-pet/
-├── src/               # Source code
-├── tests/             # Test files
-├── docs/              # Documentation
-├── scripts/           # Utility scripts
-├── notebooks/         # Jupyter notebooks
-├── docker/            # Docker-related files
-├── .github/           # GitHub workflows
-├── pyproject.toml     # Project configuration & dependencies
-├── .gitignore         # Git ignore patterns
-└── README.md          # This file
+├── src/
+│   ├── config.py                  # Central configuration
+│   ├── data/
+│   │   ├── downloader.py          # Dataset download (Kaggle + HTTP)
+│   │   ├── processor.py           # Process, sample, merge datasets
+│   │   └── schemas.py             # Pydantic models
+│   ├── embeddings/
+│   │   └── clip_encoder.py        # CLIP text/image encoder
+│   ├── search/
+│   │   ├── es_client.py           # Elasticsearch connection
+│   │   ├── indexer.py             # Index creation, bulk indexing
+│   │   └── searcher.py            # kNN search engine
+│   └── api/
+│       ├── app.py                 # FastAPI app factory
+│       ├── routes.py              # API routes
+│       └── templates/             # Jinja2 HTML templates
+├── tests/                         # Test suite (85 tests)
+├── docs/
+│   └── technical_design.md        # Full technical design document
+├── docker/
+│   └── Dockerfile                 # Multi-stage Python 3.12 build
+├── docker-compose.yml             # ES + App services
+├── main.py                        # Single entry point
+├── pyproject.toml                 # Dependencies and tool config
+└── .env.example                   # Environment variable template
 ```
 
-## Setup
+## Quick Start
 
 ### Prerequisites
 
-- Python 3.11+
-- uv package manager
+- Python 3.12+
+- Docker and Docker Compose
+- Kaggle API credentials ([setup guide](https://www.kaggle.com/settings))
 
-### Installation
+### Option 1: Docker Compose (recommended)
 
-1. Create and activate virtual environment:
 ```bash
+# Configure environment
+cp .env.example .env
+# Edit .env with your Kaggle credentials
+
+# Launch
+docker compose up
+
+# Open http://localhost:8000
+```
+
+### Option 2: Local Development
+
+```bash
+# Create virtual environment
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
+source venv/bin/activate
 
-2. Install uv (if not already installed):
-```bash
+# Install dependencies
 pip install uv
+uv pip install -e ".[dev]"
+
+# Start Elasticsearch
+docker compose up elasticsearch -d
+
+# Run the application
+python main.py
 ```
 
-3. Install dependencies:
+### CLI Options
+
 ```bash
-uv pip install -e ".[dev]"
+python main.py                    # Full pipeline: download, embed, index, serve
+python main.py --skip-download    # Skip data download (use cached data)
+python main.py --skip-index       # Skip embedding and indexing
+python main.py --port 9000        # Custom port
+python main.py --es-url http://...  # Custom Elasticsearch URL
 ```
+
+## Data Sources
+
+| Source | Records | Description |
+|--------|---------|-------------|
+| [PetFinder.my](https://www.kaggle.com/c/petfinder-adoption-prediction) | ~1000 | Real adoption listings with descriptions and photos |
+| [Oxford-IIIT Pet Dataset](https://www.robots.ox.ac.uk/~vgg/data/pets/) | ~500 | Breed-labeled pet photos with synthetic descriptions |
+
+## API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/` | Home page with search UI |
+| GET | `/search?q=friendly+cat` | Text search (HTML) |
+| POST | `/search/image` | Image upload search (HTML) |
+| GET | `/api/search?q=cat&top_k=10` | Text search (JSON) |
+| GET | `/health` | Health check |
 
 ## Development
 
@@ -55,36 +119,20 @@ uv pip install -e ".[dev]"
 pytest tests/ -v --cov=src
 ```
 
-### Code Formatting
+### Code Quality
 
 ```bash
 black src/ tests/
 isort src/ tests/
-```
-
-### Linting
-
-```bash
 ruff check src/ tests/
-mypy src/
 ```
 
-## Git Workflow
+### Tech Stack
 
-- Create feature branches: `git checkout -b feature/descriptive-name`
-- Branch naming: `feature/`, `bugfix/`, `refactor/`, `docs/`
-- Commit format: `<type>: <description>` (feat, fix, refactor, docs, test, chore)
-- Never commit directly to `main`
+- **ML**: open-clip-torch (ViT-B-32), PyTorch, Pillow
+- **Search**: Elasticsearch 8.12.0 (kNN dense_vector, cosine similarity)
+- **Web**: FastAPI, Jinja2, Tailwind CSS
+- **Data**: pandas, Pydantic, Kaggle API
+- **Testing**: pytest, httpx, 85 tests with mocked dependencies
 
-## Quality Checks
-
-Before committing, ensure:
-1. Dependencies are synced: `uv pip sync pyproject.toml`
-2. Tests pass: `pytest tests/`
-3. Code is formatted: `black src/ tests/ && isort src/ tests/`
-4. No linting errors: `ruff check src/ tests/`
-5. Type checking passes: `mypy src/`
-
-## License
-
-[Add your license here]
+For detailed technical decisions and design rationale, see [docs/technical_design.md](docs/technical_design.md).

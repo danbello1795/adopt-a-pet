@@ -50,9 +50,7 @@ PET_INDEX_MAPPING = {
 }
 
 
-def create_index(
-    es: Elasticsearch, index_name: str = PET_INDEX_NAME
-) -> None:
+def create_index(es: Elasticsearch, index_name: str = PET_INDEX_NAME) -> None:
     """Create the pets index with dense vector mappings.
 
     Deletes existing index if present and recreates it.
@@ -104,9 +102,7 @@ def index_pets(
                 "_source": doc,
             }
 
-    success, errors = bulk(
-        es, _generate_actions(), chunk_size=batch_size
-    )
+    success, errors = bulk(es, _generate_actions(), chunk_size=batch_size)
 
     if errors:
         logger.error("Bulk indexing errors: %s", errors)

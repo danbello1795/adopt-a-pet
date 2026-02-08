@@ -13,9 +13,7 @@ from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
 
-OXFORD_IMAGES_URL = (
-    "https://thor.robots.ox.ac.uk/~vgg/data/pets/images.tar.gz"
-)
+OXFORD_IMAGES_URL = "https://thor.robots.ox.ac.uk/~vgg/data/pets/images.tar.gz"
 OXFORD_ANNOTATIONS_URL = (
     "https://thor.robots.ox.ac.uk/~vgg/data/pets/annotations.tar.gz"
 )
@@ -65,9 +63,7 @@ def download_petfinder(data_dir: Path) -> Path:
             "Kaggle CLI not found. Install with: pip install kaggle"
         ) from err
     except subprocess.CalledProcessError as err:
-        raise RuntimeError(
-            f"Kaggle download failed: {err.stderr}"
-        ) from err
+        raise RuntimeError(f"Kaggle download failed: {err.stderr}") from err
 
     zip_path = target / f"{PETFINDER_COMPETITION}.zip"
     if zip_path.exists():

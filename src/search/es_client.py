@@ -24,16 +24,12 @@ def create_es_client(url: str = "http://localhost:9200") -> Elasticsearch:
     """
     es = Elasticsearch(url)
     if not es.ping():
-        raise ConnectionError(
-            f"Cannot connect to Elasticsearch at {url}"
-        )
+        raise ConnectionError(f"Cannot connect to Elasticsearch at {url}")
     logger.info("Connected to Elasticsearch at %s", url)
     return es
 
 
-def wait_for_elasticsearch(
-    url: str, timeout: int = 120
-) -> bool:
+def wait_for_elasticsearch(url: str, timeout: int = 120) -> bool:
     """Wait for Elasticsearch to become healthy.
 
     Retries connection every 5 seconds until timeout.
@@ -58,7 +54,5 @@ def wait_for_elasticsearch(
         logger.info("Waiting for Elasticsearch...")
         time.sleep(5)
 
-    logger.error(
-        "Elasticsearch not available at %s after %ds", url, timeout
-    )
+    logger.error("Elasticsearch not available at %s after %ds", url, timeout)
     return False

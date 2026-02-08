@@ -17,18 +17,10 @@ class PetRecord(BaseModel):
     name: str = Field(default="Unknown", description="Pet name if available")
     species: str = Field(description="'Dog' or 'Cat'")
     breed: str = Field(description="Primary breed name")
-    age_months: int | None = Field(
-        default=None, description="Age in months"
-    )
-    gender: str | None = Field(
-        default=None, description="Male, Female, or None"
-    )
-    description: str = Field(
-        description="Text description for CLIP encoding"
-    )
-    image_path: str = Field(
-        description="Relative path to primary image file"
-    )
+    age_months: int | None = Field(default=None, description="Age in months")
+    gender: str | None = Field(default=None, description="Male, Female, or None")
+    description: str = Field(description="Text description for CLIP encoding")
+    image_path: str = Field(description="Relative path to primary image file")
     metadata: dict = Field(
         default_factory=dict,
         description="Additional source-specific fields",
@@ -40,9 +32,7 @@ class SearchResult(BaseModel):
 
     pet: PetRecord
     score: float = Field(description="Combined relevance score")
-    explanation: str = Field(
-        default="", description="Human-readable match explanation"
-    )
+    explanation: str = Field(default="", description="Human-readable match explanation")
 
 
 class SearchResponse(BaseModel):

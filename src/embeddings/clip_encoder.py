@@ -32,9 +32,7 @@ class CLIPEncoder:
     ) -> None:
         import open_clip
 
-        self.device = device or (
-            "cuda" if torch.cuda.is_available() else "cpu"
-        )
+        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         logger.info(
             "Loading CLIP model %s (%s) on %s",
             model_name,
@@ -42,10 +40,8 @@ class CLIPEncoder:
             self.device,
         )
 
-        self.model, _, self.preprocess = (
-            open_clip.create_model_and_transforms(
-                model_name, pretrained=pretrained
-            )
+        self.model, _, self.preprocess = open_clip.create_model_and_transforms(
+            model_name, pretrained=pretrained
         )
         self.model = self.model.to(self.device).eval()
         self.tokenizer = open_clip.get_tokenizer(model_name)
@@ -53,9 +49,7 @@ class CLIPEncoder:
 
         logger.info("CLIP model loaded successfully")
 
-    def encode_text(
-        self, texts: list[str], batch_size: int = 32
-    ) -> list[list[float]]:
+    def encode_text(self, texts: list[str], batch_size: int = 32) -> list[list[float]]:
         """Encode text descriptions into normalized 512-dim vectors.
 
         Args:
@@ -126,11 +120,7 @@ class CLIPEncoder:
         Returns:
             512-dimensional float vector.
         """
-        img_tensor = (
-            self.preprocess(image.convert("RGB"))
-            .unsqueeze(0)
-            .to(self.device)
-        )
+        img_tensor = self.preprocess(image.convert("RGB")).unsqueeze(0).to(self.device)
 
         with torch.no_grad():
             features = self.model.encode_image(img_tensor)

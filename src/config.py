@@ -16,15 +16,11 @@ class Config:
     """
 
     # Paths
-    data_dir: Path = field(
-        default_factory=lambda: Path(os.getenv("DATA_DIR", "data"))
-    )
+    data_dir: Path = field(default_factory=lambda: Path(os.getenv("DATA_DIR", "data")))
 
     # Elasticsearch
     elasticsearch_url: str = field(
-        default_factory=lambda: os.getenv(
-            "ELASTICSEARCH_URL", "http://localhost:9200"
-        )
+        default_factory=lambda: os.getenv("ELASTICSEARCH_URL", "http://localhost:9200")
     )
     index_name: str = "pets"
 
@@ -43,12 +39,8 @@ class Config:
     knn_num_candidates: int = 100
 
     # Server
-    host: str = field(
-        default_factory=lambda: os.getenv("HOST", "0.0.0.0")
-    )
-    port: int = field(
-        default_factory=lambda: int(os.getenv("PORT", "8000"))
-    )
+    host: str = field(default_factory=lambda: os.getenv("HOST", "0.0.0.0"))
+    port: int = field(default_factory=lambda: int(os.getenv("PORT", "8000")))
 
 
 def get_config() -> Config:

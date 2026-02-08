@@ -39,8 +39,12 @@ def process_petfinder(
     breed_labels = pd.read_csv(petfinder_dir / "breed_labels.csv")
     color_labels = pd.read_csv(petfinder_dir / "color_labels.csv")
 
-    breed_map = dict(zip(breed_labels["BreedID"], breed_labels["BreedName"]))
-    color_map = dict(zip(color_labels["ColorID"], color_labels["ColorName"]))
+    breed_map = dict(
+        zip(breed_labels["BreedID"], breed_labels["BreedName"], strict=False)
+    )
+    color_map = dict(
+        zip(color_labels["ColorID"], color_labels["ColorName"], strict=False)
+    )
 
     train_df["BreedName"] = train_df["Breed1"].map(breed_map).fillna("Mixed")
     train_df["ColorName"] = train_df["Color1"].map(color_map).fillna("Unknown")

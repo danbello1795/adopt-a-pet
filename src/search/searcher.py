@@ -36,9 +36,7 @@ class PetSearcher:
         self.encoder = clip_encoder
         self.index_name = index_name
 
-    def search_by_text(
-        self, query: str, top_k: int = 20
-    ) -> SearchResponse:
+    def search_by_text(self, query: str, top_k: int = 20) -> SearchResponse:
         """Search pets by natural language text query.
 
         Encodes the query with CLIP and searches both text and image
@@ -68,9 +66,7 @@ class PetSearcher:
             search_time_ms=round(elapsed_ms, 1),
         )
 
-    def search_by_image(
-        self, image: Image.Image, top_k: int = 20
-    ) -> SearchResponse:
+    def search_by_image(self, image: Image.Image, top_k: int = 20) -> SearchResponse:
         """Search pets by uploaded image.
 
         Encodes the image with CLIP and searches primarily the image
@@ -194,9 +190,7 @@ def _parse_hits(hits: list[dict]) -> list[SearchResult]:
 
     for hit in hits:
         source = hit["_source"]
-        pet_data = {
-            k: v for k, v in source.items() if k not in exclude_fields
-        }
+        pet_data = {k: v for k, v in source.items() if k not in exclude_fields}
         pet = PetRecord(**pet_data)
         explanation = _generate_explanation(pet, hit["_score"])
 
