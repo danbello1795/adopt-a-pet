@@ -1,8 +1,109 @@
-/* Custom styles for Adopt-a-Pet */
+/* Adopt-a-Pet - Custom Styles */
 
+/* Line clamp utility */
 .line-clamp-3 {
     display: -webkit-box;
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
+}
+
+/* Floating background blobs */
+@keyframes float {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-20px) scale(1.05); }
+}
+
+@keyframes float-delayed {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-15px) scale(0.95); }
+}
+
+.animate-float {
+    animation: float 8s ease-in-out infinite;
+}
+
+.animate-float-delayed {
+    animation: float-delayed 10s ease-in-out infinite;
+    animation-delay: 2s;
+}
+
+/* Fade in animations */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.6s ease-out forwards;
+}
+
+.animate-fade-in-up {
+    animation: fadeInUp 0.6s ease-out forwards;
+}
+
+.animate-fade-in-up-delayed {
+    opacity: 0;
+    animation: fadeInUp 0.6s ease-out forwards;
+    animation-delay: 0.15s;
+}
+
+.animate-shake {
+    animation: shake 0.4s ease-in-out;
+}
+
+/* Smooth scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #9ca3af;
+}
+
+/* Card stagger animation on results page */
+.grid > div {
+    opacity: 0;
+    animation: fadeInUp 0.4s ease-out forwards;
+}
+
+.grid > div:nth-child(1) { animation-delay: 0.05s; }
+.grid > div:nth-child(2) { animation-delay: 0.1s; }
+.grid > div:nth-child(3) { animation-delay: 0.15s; }
+.grid > div:nth-child(4) { animation-delay: 0.2s; }
+.grid > div:nth-child(5) { animation-delay: 0.25s; }
+.grid > div:nth-child(6) { animation-delay: 0.3s; }
+.grid > div:nth-child(7) { animation-delay: 0.35s; }
+.grid > div:nth-child(8) { animation-delay: 0.4s; }
+.grid > div:nth-child(n+9) { animation-delay: 0.45s; }
+
+/* Focus styles */
+input:focus-visible {
+    outline: none;
+}
+
+/* Selection color */
+::selection {
+    background: rgba(99, 102, 241, 0.15);
+    color: inherit;
 }
