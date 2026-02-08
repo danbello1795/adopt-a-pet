@@ -67,9 +67,10 @@ uv run python main.py
 ```
 
 `main.py` detects whether Elasticsearch is running. If it isn't, it starts it
-automatically via `docker compose up -d elasticsearch`, waits for it to become
-healthy, downloads the datasets, generates CLIP embeddings, indexes them, and
-launches the web UI at **http://localhost:8000**.
+automatically via `docker compose up -d elasticsearch`. On Windows, if Docker
+Desktop is not running, it will launch it automatically and wait for the daemon
+to be ready. Then it downloads the datasets, generates CLIP embeddings, indexes
+them, and launches the web UI at **http://localhost:8000**.
 
 > **Note:** Kaggle credentials are only needed for PetFinder data. Without them,
 > the pipeline continues with the Oxford-IIIT dataset alone (~500 records).
@@ -158,7 +159,7 @@ uv run ruff check src/ tests/
 
 | Problem | Solution |
 |---------|----------|
-| `Elasticsearch not available` | Ensure Docker is running. If port 9200 is occupied by another container, stop it with `docker stop <name>` |
+| `Elasticsearch not available` | Docker Desktop starts automatically on Windows. If it fails, open it manually. If port 9200 is occupied, stop the other container with `docker stop <name>` |
 | `Kaggle download failed` | Verify `KAGGLE_KEY` in `.env` is valid. Without it, only Oxford-IIIT data is used |
 | Port 8000 already in use | Use `--port 9000` or stop the process on 8000 |
 | ES client returns 400 | Ensure `elasticsearch` Python package is `<9` (pinned in pyproject.toml). Client 9.x is not compatible with ES 8.x |

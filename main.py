@@ -19,9 +19,11 @@ from __future__ import annotations
 
 import argparse
 import logging
+import platform
 import shutil
 import subprocess
 import sys
+import time
 
 from dotenv import load_dotenv
 
@@ -48,8 +50,65 @@ def _es_is_reachable(url: str) -> bool:
         return False
 
 
+def _is_docker_daemon_running() -> bool:
+    """Return True if the Docker daemon is responding."""
+    try:
+        result = subprocess.run(
+            ["docker", "info"],
+            capture_output=True,
+            timeout=10,
+        )
+        return result.returncode == 0
+    except Exception:
+        return False
+
+
+def _start_docker_desktop(timeout: int = 60) -> bool:
+    """Try to launch Docker Desktop and wait until the daemon is ready.
+
+    Args:
+        timeout: Max seconds to wait for the daemon after launching.
+
+    Returns:
+        True if the daemon became reachable within *timeout*.
+    """
+    if platform.system() != "Windows":
+        logger.warning("Auto-start Docker Desktop is only supported on Windows.")
+        return False
+
+    docker_path = r"C:\Program Files\Docker\Docker\Docker Desktop.exe"
+    if not shutil.which("docker") and not __import__("pathlib").Path(docker_path).exists():
+        return False
+
+    logger.info("Docker daemon not running. Starting Docker Desktop...")
+    try:
+        subprocess.Popen(
+            [docker_path],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except OSError as exc:
+        logger.warning("Could not launch Docker Desktop: %s", exc)
+        return False
+
+    logger.info("Waiting up to %ds for Docker daemon to be ready...", timeout)
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if _is_docker_daemon_running():
+            logger.info("Docker daemon is ready.")
+            return True
+        time.sleep(3)
+
+    logger.error("Docker daemon did not start within %ds.", timeout)
+    return False
+
+
 def _start_elasticsearch_docker() -> None:
-    """Start only the ``elasticsearch`` service via docker-compose."""
+    """Start only the ``elasticsearch`` service via docker-compose.
+
+    If the Docker daemon is not running, attempts to launch Docker Desktop
+    first (Windows only) before retrying.
+    """
     compose_cmd = _find_compose_command()
     if compose_cmd is None:
         logger.error(
@@ -64,9 +123,27 @@ def _start_elasticsearch_docker() -> None:
             [*compose_cmd, "up", "-d", "elasticsearch"],
             check=True,
         )
-    except subprocess.CalledProcessError as exc:
-        logger.error("Failed to start Elasticsearch (exit code %d)", exc.returncode)
-        sys.exit(1)
+    except subprocess.CalledProcessError:
+        if not _is_docker_daemon_running():
+            if not _start_docker_desktop():
+                logger.error(
+                    "Could not start Docker Desktop. "
+                    "Please start it manually and retry."
+                )
+                sys.exit(1)
+            # Retry after Docker Desktop is ready
+            logger.info("Retrying: starting Elasticsearch via %s ...", " ".join(compose_cmd))
+            try:
+                subprocess.run(
+                    [*compose_cmd, "up", "-d", "elasticsearch"],
+                    check=True,
+                )
+            except subprocess.CalledProcessError as exc:
+                logger.error("Failed to start Elasticsearch (exit code %d)", exc.returncode)
+                sys.exit(1)
+        else:
+            logger.error("Docker is running but failed to start Elasticsearch.")
+            sys.exit(1)
 
 
 def _find_compose_command() -> list[str] | None:

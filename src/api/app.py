@@ -54,6 +54,10 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    from src.api.routes import router
+
+    app.include_router(router)
+
     static_dir = Path(__file__).parent.parent / "static"
     if static_dir.exists():
         app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
@@ -76,9 +80,5 @@ def create_app() -> FastAPI:
             StaticFiles(directory=str(oxford_images)),
             name="oxford_images",
         )
-
-    from src.api.routes import router
-
-    app.include_router(router)
 
     return app
