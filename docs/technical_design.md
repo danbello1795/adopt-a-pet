@@ -139,8 +139,7 @@ Elasticsearch combines multiple kNN clauses via linear score combination, produc
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| KAGGLE_USERNAME | - | Kaggle API username |
-| KAGGLE_KEY | - | Kaggle API key |
+| KAGGLE_KEY | - | Kaggle API key (pre-configured in .env) |
 | ELASTICSEARCH_URL | http://localhost:9200 | ES connection URL |
 | DATA_DIR | data | Data storage directory |
 | HOST | 0.0.0.0 | Server bind host |

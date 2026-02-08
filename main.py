@@ -4,18 +4,28 @@
 Downloads data, generates CLIP embeddings, indexes into Elasticsearch,
 and launches the FastAPI web UI.
 
+Automatically starts Elasticsearch via docker-compose if it is not already
+running, so a bare ``python main.py`` is enough to launch the full stack.
+
 Usage:
     python main.py
     python main.py --skip-download
     python main.py --skip-index
     python main.py --port 8000
+    python main.py --no-docker          # don't auto-start ES
 """
 
 from __future__ import annotations
 
 import argparse
 import logging
+import shutil
+import subprocess
 import sys
+
+from dotenv import load_dotenv
+
+load_dotenv()
 
 logging.basicConfig(
     level=logging.INFO,
@@ -24,8 +34,64 @@ logging.basicConfig(
 logger = logging.getLogger("adopt-a-pet")
 
 
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _es_is_reachable(url: str) -> bool:
+    """Return True if Elasticsearch responds to a ping at *url*."""
+    from elasticsearch import Elasticsearch
+
+    try:
+        return Elasticsearch(url).ping()
+    except Exception:
+        return False
+
+
+def _start_elasticsearch_docker() -> None:
+    """Start only the ``elasticsearch`` service via docker-compose."""
+    compose_cmd = _find_compose_command()
+    if compose_cmd is None:
+        logger.error(
+            "docker-compose / docker compose not found. "
+            "Please start Elasticsearch manually or install Docker."
+        )
+        sys.exit(1)
+
+    logger.info("Starting Elasticsearch via %s ...", " ".join(compose_cmd))
+    try:
+        subprocess.run(
+            [*compose_cmd, "up", "-d", "elasticsearch"],
+            check=True,
+        )
+    except subprocess.CalledProcessError as exc:
+        logger.error("Failed to start Elasticsearch (exit code %d)", exc.returncode)
+        sys.exit(1)
+
+
+def _find_compose_command() -> list[str] | None:
+    """Return the docker-compose CLI invocation available on this system."""
+    if shutil.which("docker"):
+        result = subprocess.run(
+            ["docker", "compose", "version"],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 0:
+            return ["docker", "compose"]
+
+    if shutil.which("docker-compose"):
+        return ["docker-compose"]
+
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Main pipeline
+# ---------------------------------------------------------------------------
+
 def main() -> None:
-    """Orchestrate the full pipeline: download -> process -> embed -> index -> serve."""
+    """Orchestrate the full pipeline: docker -> download -> process -> embed -> index -> serve."""
     parser = argparse.ArgumentParser(
         description="Adopt-a-Pet Cross-Modal Search System"
     )
@@ -48,6 +114,11 @@ def main() -> None:
     parser.add_argument(
         "--es-url", type=str, default=None, help="Elasticsearch URL"
     )
+    parser.add_argument(
+        "--no-docker",
+        action="store_true",
+        help="Do not auto-start Elasticsearch via docker-compose",
+    )
     args = parser.parse_args()
 
     from src.config import get_config
@@ -55,47 +126,93 @@ def main() -> None:
     config = get_config()
     es_url = args.es_url or config.elasticsearch_url
 
-    # Step 1: Wait for Elasticsearch
-    logger.info("Step 1/5: Connecting to Elasticsearch at %s", es_url)
+    # Step 1: Ensure Elasticsearch is running
+    logger.info("Step 1/6: Ensuring Elasticsearch is available at %s", es_url)
+
+    if not _es_is_reachable(es_url):
+        if args.no_docker:
+            logger.error(
+                "Elasticsearch is not reachable at %s and --no-docker was set. "
+                "Start Elasticsearch manually and retry.",
+                es_url,
+            )
+            sys.exit(1)
+
+        logger.info("Elasticsearch not reachable – starting via docker-compose...")
+        _start_elasticsearch_docker()
+
     from src.search.es_client import wait_for_elasticsearch
 
     if not wait_for_elasticsearch(es_url):
-        logger.error("Elasticsearch not available. Exiting.")
+        logger.error("Elasticsearch not available after waiting. Exiting.")
         sys.exit(1)
 
     # Step 2: Download data
+    petfinder_dir = config.data_dir / "petfinder"
+    oxford_dir = config.data_dir / "oxford_pets"
+
     if not args.skip_download:
-        logger.info("Step 2/5: Downloading datasets...")
+        logger.info("Step 2/6: Downloading datasets...")
         from src.data.downloader import download_oxford_pets, download_petfinder
 
         config.data_dir.mkdir(parents=True, exist_ok=True)
-        petfinder_dir = download_petfinder(config.data_dir)
-        oxford_dir = download_oxford_pets(config.data_dir)
+
+        try:
+            petfinder_dir = download_petfinder(config.data_dir)
+        except Exception as exc:
+            logger.warning("PetFinder download failed: %s", exc)
+            logger.warning(
+                "Continuing without PetFinder data. "
+                "Set KAGGLE_KEY in .env or configure ~/.kaggle/kaggle.json."
+            )
+
+        try:
+            oxford_dir = download_oxford_pets(config.data_dir)
+        except Exception as exc:
+            logger.warning("Oxford-IIIT download failed: %s", exc)
     else:
-        logger.info("Step 2/5: Skipping download (--skip-download)")
-        petfinder_dir = config.data_dir / "petfinder"
-        oxford_dir = config.data_dir / "oxford_pets"
+        logger.info("Step 2/6: Skipping download (--skip-download)")
 
     # Step 3: Process and merge data
     if not args.skip_index:
-        logger.info("Step 3/5: Processing datasets...")
+        logger.info("Step 3/6: Processing datasets...")
         from src.data.processor import (
             merge_datasets,
             process_oxford,
             process_petfinder,
         )
 
-        pf_records = process_petfinder(
-            petfinder_dir, sample_size=config.petfinder_sample_size
-        )
-        ox_records = process_oxford(
-            oxford_dir, sample_size=config.oxford_sample_size
-        )
+        pf_records: list = []
+        ox_records: list = []
+
+        petfinder_has_data = (petfinder_dir / "train.csv").exists() or (
+            petfinder_dir / "train" / "train.csv"
+        ).exists()
+        if petfinder_dir.exists() and petfinder_has_data:
+            pf_records = process_petfinder(
+                petfinder_dir, sample_size=config.petfinder_sample_size
+            )
+        else:
+            logger.warning("PetFinder data not found at %s, skipping", petfinder_dir)
+
+        if oxford_dir.exists() and (oxford_dir / "annotations").exists():
+            ox_records = process_oxford(
+                oxford_dir, sample_size=config.oxford_sample_size
+            )
+        else:
+            logger.warning("Oxford-IIIT data not found at %s, skipping", oxford_dir)
+
         all_records = merge_datasets(pf_records, ox_records)
+
+        if not all_records:
+            logger.error(
+                "No data available to index. Download at least one dataset first."
+            )
+            sys.exit(1)
         logger.info("Total records: %d", len(all_records))
 
         # Step 4: Generate CLIP embeddings
-        logger.info("Step 4/5: Generating CLIP embeddings...")
+        logger.info("Step 4/6: Generating CLIP embeddings...")
         from src.embeddings.clip_encoder import CLIPEncoder
 
         encoder = CLIPEncoder(
@@ -113,7 +230,7 @@ def main() -> None:
         image_embeddings = encoder.encode_images(image_paths)
 
         # Step 5: Index into Elasticsearch
-        logger.info("Step 5/5: Indexing into Elasticsearch...")
+        logger.info("Step 5/6: Indexing into Elasticsearch...")
         from elasticsearch import Elasticsearch
 
         from src.search.indexer import create_index, index_pets
@@ -130,7 +247,7 @@ def main() -> None:
         logger.info("Steps 3-5: Skipping indexing (--skip-index)")
 
     # Step 6: Launch FastAPI server
-    logger.info("Launching web UI on %s:%d", args.host, args.port)
+    logger.info("Step 6/6: Launching web UI on %s:%d", args.host, args.port)
     import uvicorn
 
     from src.api.app import create_app

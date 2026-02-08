@@ -50,23 +50,10 @@ adopt-a-pet/
 ### Prerequisites
 
 - Python 3.12+
-- Docker and Docker Compose
-- Kaggle API credentials ([setup guide](https://www.kaggle.com/settings))
+- Docker (for Elasticsearch)
+- Kaggle API credentials (optional, for PetFinder dataset — [setup guide](https://www.kaggle.com/settings))
 
-### Option 1: Docker Compose (recommended)
-
-```bash
-# Configure environment
-cp .env.example .env
-# Edit .env with your Kaggle credentials
-
-# Launch
-docker compose up
-
-# Open http://localhost:8000
-```
-
-### Option 2: Local Development
+### One-command launch
 
 ```bash
 # Install uv (if not already installed)
@@ -75,21 +62,55 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 # Install dependencies (creates .venv automatically)
 uv sync
 
-# Start Elasticsearch
-docker compose up elasticsearch -d
-
-# Run the application
+# Launch everything (auto-starts Elasticsearch via Docker)
 uv run python main.py
 ```
+
+`main.py` detects whether Elasticsearch is running. If it isn't, it starts it
+automatically via `docker compose up -d elasticsearch`, waits for it to become
+healthy, downloads the datasets, generates CLIP embeddings, indexes them, and
+launches the web UI at **http://localhost:8000**.
+
+> **Note:** Kaggle credentials are only needed for PetFinder data. Without them,
+> the pipeline continues with the Oxford-IIIT dataset alone (~500 records).
+> To enable PetFinder, the `KAGGLE_KEY` is already configured in `.env`.
+
+### Full Docker Compose (app + ES in containers)
+
+```bash
+# Configure environment
+cp .env.example .env
+# Edit .env with your Kaggle credentials
+
+# Launch both services
+docker compose up
+
+# Open http://localhost:8000
+```
+
+### Pipeline steps
+
+`main.py` runs six steps in order:
+
+| Step | Description | Skip flag |
+|------|-------------|-----------|
+| 1 | Ensure Elasticsearch is running (auto-start via Docker if needed) | `--no-docker` |
+| 2 | Download PetFinder (Kaggle) and Oxford-IIIT datasets | `--skip-download` |
+| 3 | Process and merge datasets into `PetRecord` objects | `--skip-index` |
+| 4 | Generate CLIP embeddings (text + image) | `--skip-index` |
+| 5 | Bulk-index documents into Elasticsearch | `--skip-index` |
+| 6 | Launch FastAPI web UI | — |
 
 ### CLI Options
 
 ```bash
-python main.py                    # Full pipeline: download, embed, index, serve
-python main.py --skip-download    # Skip data download (use cached data)
-python main.py --skip-index       # Skip embedding and indexing
-python main.py --port 9000        # Custom port
-python main.py --es-url http://...  # Custom Elasticsearch URL
+uv run python main.py                       # Full pipeline
+uv run python main.py --skip-download       # Use already-downloaded data
+uv run python main.py --skip-index          # Skip embeddings + indexing (data already indexed)
+uv run python main.py --no-docker           # Don't auto-start ES (manage it yourself)
+uv run python main.py --port 9000           # Custom server port
+uv run python main.py --host 127.0.0.1      # Custom server host
+uv run python main.py --es-url http://...   # Custom Elasticsearch URL
 ```
 
 ## Data Sources
@@ -128,9 +149,18 @@ uv run ruff check src/ tests/
 ### Tech Stack
 
 - **ML**: open-clip-torch (ViT-B-32), PyTorch, Pillow
-- **Search**: Elasticsearch 8.12.0 (kNN dense_vector, cosine similarity)
+- **Search**: Elasticsearch 8.12.0 (kNN dense_vector, cosine similarity), elasticsearch-py 8.x
 - **Web**: FastAPI, Jinja2, Tailwind CSS
 - **Data**: pandas, Pydantic, Kaggle API
 - **Testing**: pytest, httpx, 85 tests with mocked dependencies
+
+### Troubleshooting
+
+| Problem | Solution |
+|---------|----------|
+| `Elasticsearch not available` | Ensure Docker is running. If port 9200 is occupied by another container, stop it with `docker stop <name>` |
+| `Kaggle download failed` | Verify `KAGGLE_KEY` in `.env` is valid. Without it, only Oxford-IIIT data is used |
+| Port 8000 already in use | Use `--port 9000` or stop the process on 8000 |
+| ES client returns 400 | Ensure `elasticsearch` Python package is `<9` (pinned in pyproject.toml). Client 9.x is not compatible with ES 8.x |
 
 For detailed technical decisions and design rationale, see [docs/technical_design.md](docs/technical_design.md).
