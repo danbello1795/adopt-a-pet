@@ -1,14 +1,38 @@
 [project]
 name = "adopt-a-pet"
 version = "0.1.0"
-description = "MLE Test: Adopt a pet - Pet adoption recommendation system"
+description = "MLE Test: Adopt a pet - Cross-modal pet search using CLIP + Elasticsearch"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    # Web framework
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+    "jinja2>=3.1.3",
+    "python-multipart>=0.0.6",
+    # Elasticsearch
+    "elasticsearch>=8.12.0",
+    # ML / CLIP
+    "open-clip-torch>=2.24.0",
+    "torch>=2.1.0",
+    "torchvision>=0.16.0",
+    "Pillow>=10.2.0",
+    # Data processing
+    "pandas>=2.1.0",
+    "numpy>=1.26.0",
+    "pydantic>=2.5.0",
+    # Kaggle API
+    "kaggle>=1.6.0",
+    # HTTP downloads
+    "requests>=2.31.0",
+    "tqdm>=4.66.0",
+]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=7.4.0",
     "pytest-cov>=4.1.0",
+    "pytest-asyncio>=0.23.0",
+    "httpx>=0.26.0",
     "black>=23.0.0",
     "ruff>=0.1.0",
     "mypy>=1.5.0",

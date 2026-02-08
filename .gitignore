@@ -64,7 +64,7 @@ dmypy.json
 .env.*.local
 
 # Data (not in version control)
-data/
+/data/
 *.csv
 *.xlsx
 *.xls
@@ -72,7 +72,7 @@ data/
 *.feather
 
 # Models (not in version control)
-models/
+/models/
 *.pkl
 *.joblib
 *.h5
