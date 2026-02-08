@@ -14,46 +14,67 @@
             theme: {
                 extend: {
                     fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+                    colors: {
+                        dark: {
+                            50: '#f8fafc',
+                            100: '#f1f5f9',
+                            200: '#e2e8f0',
+                            300: '#94a3b8',
+                            400: '#64748b',
+                            500: '#475569',
+                            600: '#334155',
+                            700: '#1e293b',
+                            800: '#0f172a',
+                            900: '#020617',
+                            950: '#010410',
+                        }
+                    }
                 }
             }
         }
     </script>
 </head>
-<body class="bg-gradient-to-br from-slate-50 via-white to-indigo-50/30 min-h-screen font-sans">
-    <nav class="sticky top-0 z-50 backdrop-blur-lg bg-white/70 border-b border-gray-200/50">
-        <div class="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
+<body class="bg-dark-950 min-h-screen font-sans text-gray-200 flex flex-col">
+    <!-- Ambient background glow -->
+    <div class="fixed inset-0 -z-10 overflow-hidden">
+        <div class="absolute top-0 left-1/4 w-[600px] h-[600px] bg-amber-600/8 rounded-full blur-[120px] animate-glow"></div>
+        <div class="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-red-600/8 rounded-full blur-[120px] animate-glow-delayed"></div>
+    </div>
+
+    <nav class="sticky top-0 z-50 backdrop-blur-xl bg-dark-950/70 border-b border-white/5">
+        <div class="max-w-7xl mx-auto px-6 py-3.5 flex items-center justify-between">
             <a href="/" class="flex items-center gap-2.5 group">
-                <div class="w-9 h-9 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200/50 group-hover:shadow-indigo-300/70 transition-all duration-300 group-hover:scale-105">
+                <div class="w-9 h-9 bg-gradient-to-br from-amber-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg shadow-amber-500/20 group-hover:shadow-amber-500/40 transition-all duration-300 group-hover:scale-105">
                     <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M4.5 11.5c-1.4 0-2.5-1.1-2.5-2.5S3.1 6.5 4.5 6.5 7 7.6 7 9s-1.1 2.5-2.5 2.5zm5-5C8.1 6.5 7 5.4 7 4s1.1-2.5 2.5-2.5S12 2.6 12 4s-1.1 2.5-2.5 2.5zm5 0C13.1 6.5 12 5.4 12 4s1.1-2.5 2.5-2.5S17 2.6 17 4s-1.1 2.5-2.5 2.5zm5 5c-1.4 0-2.5-1.1-2.5-2.5s1.1-2.5 2.5-2.5S22 7.6 22 9s-1.1 2.5-2.5 2.5zM12 24c-2.8 0-5-2.2-5-5 0-3 3.5-7.2 4.6-8.4.4-.4 1-.4 1.4-.1l.1.1C14.5 11.8 17 16 17 19c0 2.8-2.2 5-5 5z"/>
                     </svg>
                 </div>
-                <span class="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                <span class="text-xl font-bold bg-gradient-to-r from-amber-400 to-red-400 bg-clip-text text-transparent">
                     Adopt-a-Pet
                 </span>
             </a>
             <div class="flex items-center gap-4">
-                <span class="hidden sm:block text-xs font-medium text-gray-400 tracking-wide uppercase">CLIP + Elasticsearch</span>
-                <a href="/health" class="text-xs px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-600 font-medium hover:bg-emerald-100 transition-colors">
+                <span class="hidden sm:block text-xs font-medium text-dark-400 tracking-wide uppercase">CLIP + Elasticsearch</span>
+                <a href="/health" class="text-xs px-3 py-1.5 rounded-full bg-emerald-500/10 text-emerald-400 font-medium hover:bg-emerald-500/20 transition-colors border border-emerald-500/20">
                     Status
                 </a>
             </div>
         </div>
     </nav>
 
-    <main class="max-w-7xl mx-auto px-6 py-8">
+    <main class="max-w-7xl mx-auto px-6 py-8 flex-1">
         {% block content %}{% endblock %}
     </main>
 
-    <footer class="mt-auto border-t border-gray-100 bg-white/50 backdrop-blur-sm">
+    <footer class="border-t border-white/5 bg-dark-950/80 backdrop-blur-sm">
         <div class="max-w-7xl mx-auto px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-2">
-            <p class="text-xs text-gray-400">
+            <p class="text-xs text-dark-400">
                 Data: PetFinder.my (Kaggle) &amp; Oxford-IIIT Pet Dataset
             </p>
-            <p class="text-xs text-gray-400">
-                Built with <span class="font-medium text-gray-500">CLIP</span> +
-                <span class="font-medium text-gray-500">Elasticsearch</span> +
-                <span class="font-medium text-gray-500">FastAPI</span>
+            <p class="text-xs text-dark-400">
+                Built with <span class="font-medium text-dark-300">CLIP</span> +
+                <span class="font-medium text-dark-300">Elasticsearch</span> +
+                <span class="font-medium text-dark-300">FastAPI</span>
             </p>
         </div>
     </footer>
