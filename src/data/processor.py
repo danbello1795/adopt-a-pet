@@ -35,7 +35,10 @@ def process_petfinder(
     """
     logger.info("Processing PetFinder dataset from %s", petfinder_dir)
 
-    train_df = pd.read_csv(petfinder_dir / "train.csv")
+    train_csv = petfinder_dir / "train.csv"
+    if not train_csv.exists():
+        train_csv = petfinder_dir / "train" / "train.csv"
+    train_df = pd.read_csv(train_csv)
     breed_labels = pd.read_csv(petfinder_dir / "breed_labels.csv")
     color_labels = pd.read_csv(petfinder_dir / "color_labels.csv")
 
@@ -77,11 +80,17 @@ def process_petfinder(
             continue
 
         description = _build_petfinder_description(row)
+
+        # Handle NaN values for name field
+        name = row.get("Name", "Unknown")
+        if pd.isna(name):
+            name = "Unknown"
+
         records.append(
             PetRecord(
                 pet_id=f"pf-{row['PetID']}",
                 source="petfinder",
-                name=row.get("Name", "Unknown") or "Unknown",
+                name=name,
                 species=row["SpeciesName"],
                 breed=row["BreedName"],
                 age_months=int(row["Age"]) if pd.notna(row["Age"]) else None,
