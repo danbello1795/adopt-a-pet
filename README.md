@@ -69,19 +69,17 @@ docker compose up
 ### Option 2: Local Development
 
 ```bash
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate
+# Install uv (if not already installed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Install dependencies
-pip install uv
-uv pip install -e ".[dev]"
+# Install dependencies (creates .venv automatically)
+uv sync
 
 # Start Elasticsearch
 docker compose up elasticsearch -d
 
 # Run the application
-python main.py
+uv run python main.py
 ```
 
 ### CLI Options
@@ -116,15 +114,15 @@ python main.py --es-url http://...  # Custom Elasticsearch URL
 ### Running Tests
 
 ```bash
-pytest tests/ -v --cov=src
+uv run pytest tests/ -v --cov=src
 ```
 
 ### Code Quality
 
 ```bash
-black src/ tests/
-isort src/ tests/
-ruff check src/ tests/
+uv run black src/ tests/
+uv run isort src/ tests/
+uv run ruff check src/ tests/
 ```
 
 ### Tech Stack

@@ -7,13 +7,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip install --no-cache-dir uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
-COPY pyproject.toml .
+COPY pyproject.toml uv.lock ./
 
-RUN uv pip install --system torch torchvision \
-    --index-url https://download.pytorch.org/whl/cpu \
-    && uv pip install --system -e "."
+ENV UV_EXTRA_INDEX_URL=https://download.pytorch.org/whl/cpu
+ENV UV_LINK_MODE=copy
+
+RUN uv sync --frozen --no-dev --no-editable
+
+COPY . .
 
 FROM python:3.12-slim AS runtime
 
@@ -23,12 +26,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
-COPY --from=builder /usr/local/bin /usr/local/bin
-
-COPY . .
+COPY --from=builder /app /app
 
 RUN mkdir -p /app/data
+
+ENV PATH="/app/.venv/bin:$PATH"
 
 EXPOSE 8000
 
