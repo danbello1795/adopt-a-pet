@@ -19,8 +19,8 @@ from src.search.searcher import PetSearcher
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Initialize shared resources on startup, clean up on shutdown.
 
-    Creates Elasticsearch client, CLIP encoder, and PetSearcher
-    instances that are shared across all requests.
+    Creates Elasticsearch client on startup. CLIP encoder and PetSearcher
+    are lazy-loaded on first search to reduce cold start time.
     """
     config = get_config()
 
@@ -30,15 +30,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         cloud_id=config.elasticsearch_cloud_id,
         api_key=config.elasticsearch_api_key,
     )
-    app.state.clip_encoder = CLIPEncoder(
-        model_name=config.clip_model_name,
-        pretrained=config.clip_pretrained,
-    )
-    app.state.searcher = PetSearcher(
-        es_client=app.state.es_client,
-        clip_encoder=app.state.clip_encoder,
-        index_name=config.index_name,
-    )
+    # Lazy-load CLIP encoder to speed up cold starts
+    app.state.clip_encoder = None
+    app.state.searcher = None
 
     yield
 

@@ -18,6 +18,37 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 
+
+def _get_searcher(request: Request):
+    """Get or initialize PetSearcher (lazy loading).
+
+    Initializes CLIP encoder and PetSearcher on first call to reduce cold start time.
+
+    Args:
+        request: FastAPI request with app state.
+
+    Returns:
+        Initialized PetSearcher instance.
+    """
+    if request.app.state.searcher is None:
+        logger.info("Lazy-loading CLIP encoder and PetSearcher...")
+        from src.embeddings.clip_encoder import CLIPEncoder
+        from src.search.searcher import PetSearcher
+
+        config = request.app.state.config
+        request.app.state.clip_encoder = CLIPEncoder(
+            model_name=config.clip_model_name,
+            pretrained=config.clip_pretrained,
+        )
+        request.app.state.searcher = PetSearcher(
+            es_client=request.app.state.es_client,
+            clip_encoder=request.app.state.clip_encoder,
+            index_name=config.index_name,
+        )
+        logger.info("CLIP encoder and PetSearcher initialized")
+
+    return request.app.state.searcher
+
 # Curated breeds for the homepage sample cards (3 dogs, 3 cats)
 _FEATURED_BREEDS: list[tuple[str, str]] = [
     ("Golden Retriever", "Dog"),
@@ -109,7 +140,7 @@ async def text_search(request: Request, q: str = "", top_k: int = 10) -> HTMLRes
             {"request": request, "error": "Please enter a search query."},
         )
 
-    searcher = request.app.state.searcher
+    searcher = _get_searcher(request)
     response = searcher.search_by_text(q.strip(), top_k=top_k)
 
     return templates.TemplateResponse(
@@ -137,7 +168,7 @@ async def image_search(
     contents = await file.read()
     image = Image.open(io.BytesIO(contents))
 
-    searcher = request.app.state.searcher
+    searcher = _get_searcher(request)
     response = searcher.search_by_image(image, top_k=top_k)
 
     return templates.TemplateResponse(
@@ -177,5 +208,5 @@ async def api_text_search(request: Request, q: str, top_k: int = 10) -> SearchRe
     Returns:
         SearchResponse as JSON.
     """
-    searcher = request.app.state.searcher
+    searcher = _get_searcher(request)
     return searcher.search_by_text(q, top_k=top_k)
