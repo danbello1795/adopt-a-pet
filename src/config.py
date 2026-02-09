@@ -45,7 +45,7 @@ class Config:
     random_seed: int = 42
 
     # Search
-    default_top_k: int = 20
+    default_top_k: int = 10
     knn_num_candidates: int = 100
 
     # Images

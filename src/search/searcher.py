@@ -36,7 +36,7 @@ class PetSearcher:
         self.encoder = clip_encoder
         self.index_name = index_name
 
-    def search_by_text(self, query: str, top_k: int = 20) -> SearchResponse:
+    def search_by_text(self, query: str, top_k: int = 10) -> SearchResponse:
         """Search pets by natural language text query.
 
         Returns adoption listings (PetFinder) and image results (both sources)
@@ -89,7 +89,7 @@ class PetSearcher:
             search_time_ms=round(elapsed_ms, 1),
         )
 
-    def search_by_image(self, image: Image.Image, top_k: int = 20) -> SearchResponse:
+    def search_by_image(self, image: Image.Image, top_k: int = 10) -> SearchResponse:
         """Search pets by uploaded image.
 
         Returns similar images (both sources) and adoption listings (PetFinder)
@@ -149,7 +149,7 @@ def _fetch_mixed_images(
     primary_boost: float,
     secondary_field: str,
     secondary_boost: float,
-    total_k: int = 20,
+    total_k: int = 10,
     num_candidates: int = 100,
 ) -> list[SearchResult]:
     """Fetch image results from both PetFinder and Oxford sources.

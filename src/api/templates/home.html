@@ -82,10 +82,11 @@
         </div>
 
         <!-- Image Upload -->
-        <form action="/search/image" method="post" enctype="multipart/form-data" class="animate-fade-in-up-delayed">
+        <form id="image-form" action="/search/image" method="post" enctype="multipart/form-data" class="animate-fade-in-up-delayed">
             <div id="drop-zone" class="relative border-2 border-dashed border-white/10 rounded-2xl p-10 hover:border-amber-500/40 transition-all duration-300 bg-white/[0.02] backdrop-blur-sm group cursor-pointer"
-                 ondragover="event.preventDefault(); this.classList.add('border-amber-500/50', 'bg-amber-500/5')"
-                 ondragleave="this.classList.remove('border-amber-500/50', 'bg-amber-500/5')"
+                 ondragover="event.preventDefault(); event.stopPropagation(); this.classList.add('border-amber-500/50', 'bg-amber-500/5')"
+                 ondragleave="event.preventDefault(); this.classList.remove('border-amber-500/50', 'bg-amber-500/5')"
+                 ondrop="event.preventDefault(); event.stopPropagation(); this.classList.remove('border-amber-500/50', 'bg-amber-500/5'); var files = event.dataTransfer.files; if (files.length > 0) { document.getElementById('file-input').files = files; document.getElementById('file-name').textContent = files[0].name; document.getElementById('file-name').classList.remove('hidden'); document.getElementById('upload-btn').classList.remove('hidden'); }"
                  onclick="document.getElementById('file-input').click()">
 
                 <div class="flex flex-col items-center">
@@ -108,7 +109,7 @@
                     required
                     onchange="document.getElementById('file-name').textContent = this.files[0]?.name || ''; document.getElementById('file-name').classList.remove('hidden'); document.getElementById('upload-btn').classList.remove('hidden')"
                 >
-                <input type="hidden" name="top_k" value="20">
+                <input type="hidden" name="top_k" value="10">
             </div>
             <button
                 type="submit"
@@ -121,11 +122,47 @@
     </div>
 </div>
 
+<!-- Featured Pets -->
+{% if featured_pets %}
+<div class="mt-14 mb-10 animate-fade-in-up-delayed">
+    <p class="text-xs font-medium text-dark-400 uppercase tracking-wider mb-4 text-center">Search by pet</p>
+    <div class="grid grid-cols-3 sm:grid-cols-6 gap-3 max-w-3xl mx-auto">
+        {% for pet in featured_pets %}
+        <a href="/search?q={{ pet.breed | urlencode }}"
+           class="group bg-dark-800/60 backdrop-blur-sm rounded-xl border border-white/5 hover:border-amber-500/30 hover:shadow-lg hover:shadow-amber-500/5 hover:-translate-y-1 transition-all duration-300 overflow-hidden">
+            <div class="aspect-square bg-dark-900 relative overflow-hidden">
+                {% set image_base = config.image_base_url %}
+                {% set img_filename = pet.image_path.split("/")[-1].split("\\")[-1] %}
+                {% if pet.source == "petfinder" %}
+                <img src="{{ image_base }}/petfinder/{{ img_filename }}" alt="{{ pet.breed }}"
+                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                     loading="lazy">
+                {% else %}
+                <img src="{{ image_base }}/oxford/{{ img_filename }}" alt="{{ pet.breed }}"
+                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                     loading="lazy">
+                {% endif %}
+                <div class="absolute top-1.5 right-1.5">
+                    <span class="px-1.5 py-0.5 text-[9px] font-semibold rounded-md backdrop-blur-md shadow-sm
+                        {% if pet.species == 'Dog' %}bg-orange-500/80{% else %}bg-rose-500/80{% endif %} text-white">
+                        {{ pet.species }}
+                    </span>
+                </div>
+            </div>
+            <div class="p-2 text-center">
+                <p class="text-xs font-medium text-white truncate">{{ pet.breed }}</p>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
 <!-- Stats -->
 <div class="grid grid-cols-3 gap-6 max-w-lg mx-auto mt-8">
     <div class="text-center group">
         <div class="stat-card rounded-xl p-4 border border-white/5 bg-white/[0.02] hover:bg-white/[0.05] transition-all duration-300">
-            <p class="text-2xl font-bold bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">1,500+</p>
+            <p class="text-2xl font-bold bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">{{ "{:,}".format(pet_count) if pet_count else "21,000+" }}</p>
             <p class="text-xs text-dark-400 mt-0.5">Pets indexed</p>
         </div>
     </div>
