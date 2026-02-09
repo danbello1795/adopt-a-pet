@@ -150,7 +150,7 @@ async def image_search(
     )
 
 
-@router.get("/health")
+@router.api_route("/health", methods=["GET", "HEAD"])
 async def health_check(request: Request) -> dict:
     """Health check endpoint for monitoring.
 
