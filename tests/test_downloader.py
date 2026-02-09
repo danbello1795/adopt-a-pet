@@ -22,29 +22,35 @@ class TestDownloadPetfinder:
         result = download_petfinder(tmp_data_dir)
         assert result == pf_dir
 
-    @patch("src.data.downloader.subprocess.run")
-    def test_calls_kaggle_cli(self, mock_run: MagicMock, tmp_data_dir: Path) -> None:
-        """Should invoke kaggle CLI with correct arguments."""
-        mock_run.return_value = MagicMock(returncode=0)
-
-        try:
-            download_petfinder(tmp_data_dir)
-        except Exception:
-            pass
-
-        mock_run.assert_called_once()
-        call_args = mock_run.call_args[0][0]
-        assert "kaggle" in call_args
-        assert "petfinder-adoption-prediction" in call_args
-
-    @patch("src.data.downloader.subprocess.run")
-    def test_raises_on_missing_kaggle(
-        self, mock_run: MagicMock, tmp_data_dir: Path
+    @patch("pathlib.Path.unlink")
+    @patch("src.data.downloader._extract_zip")
+    @patch("src.data.downloader._download_file")
+    @patch("src.data.downloader._get_kaggle_key", return_value="test-key")
+    def test_calls_kaggle_api(
+        self,
+        mock_key: MagicMock,
+        mock_download: MagicMock,
+        mock_extract: MagicMock,
+        mock_unlink: MagicMock,
+        tmp_data_dir: Path,
     ) -> None:
-        """Should raise RuntimeError if kaggle CLI not found."""
-        mock_run.side_effect = FileNotFoundError()
+        """Should call Kaggle REST API with bearer token."""
+        download_petfinder(tmp_data_dir)
 
-        with pytest.raises(RuntimeError, match="Kaggle CLI not found"):
+        mock_key.assert_called_once()
+        mock_download.assert_called_once()
+        call_kwargs = mock_download.call_args
+        assert "petfinder-adoption-prediction" in str(call_kwargs)
+        assert call_kwargs[1]["bearer_token"] == "test-key"
+
+    @patch("src.data.downloader._get_kaggle_key")
+    def test_raises_on_missing_credentials(
+        self, mock_key: MagicMock, tmp_data_dir: Path
+    ) -> None:
+        """Should raise RuntimeError if Kaggle credentials not found."""
+        mock_key.side_effect = RuntimeError("Kaggle credentials not found")
+
+        with pytest.raises(RuntimeError, match="Kaggle credentials not found"):
             download_petfinder(tmp_data_dir)
 
 

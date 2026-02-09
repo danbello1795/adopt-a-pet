@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import platform
 import shutil
 import subprocess
@@ -40,11 +41,17 @@ logger = logging.getLogger("adopt-a-pet")
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _es_is_reachable(url: str) -> bool:
-    """Return True if Elasticsearch responds to a ping at *url*."""
+def _es_is_reachable(
+    url: str,
+    cloud_id: str | None = None,
+    api_key: str | None = None,
+) -> bool:
+    """Return True if Elasticsearch responds to a ping."""
     from elasticsearch import Elasticsearch
 
     try:
+        if cloud_id:
+            return Elasticsearch(cloud_id=cloud_id, api_key=api_key).ping()
         return Elasticsearch(url).ping()
     except Exception:
         return False
@@ -183,13 +190,22 @@ def main() -> None:
         help="Skip embedding generation and ES indexing",
     )
     parser.add_argument(
-        "--port", type=int, default=8000, help="Server port"
+        "--port", type=int, default=int(os.getenv("PORT", "8000")),
+        help="Server port (default: PORT env var or 8000)",
     )
     parser.add_argument(
         "--host", type=str, default="0.0.0.0", help="Server host"
     )
     parser.add_argument(
         "--es-url", type=str, default=None, help="Elasticsearch URL"
+    )
+    parser.add_argument(
+        "--es-cloud-id", type=str, default=None,
+        help="Elastic Cloud deployment ID",
+    )
+    parser.add_argument(
+        "--es-api-key", type=str, default=None,
+        help="Elastic Cloud API key",
     )
     parser.add_argument(
         "--no-docker",
@@ -202,16 +218,19 @@ def main() -> None:
 
     config = get_config()
     es_url = args.es_url or config.elasticsearch_url
+    cloud_id = args.es_cloud_id or config.elasticsearch_cloud_id
+    api_key = args.es_api_key or config.elasticsearch_api_key
 
     # Step 1: Ensure Elasticsearch is running
-    logger.info("Step 1/6: Ensuring Elasticsearch is available at %s", es_url)
+    es_target = cloud_id or es_url
+    logger.info("Step 1/6: Ensuring Elasticsearch is available at %s", es_target)
 
-    if not _es_is_reachable(es_url):
-        if args.no_docker:
+    if not _es_is_reachable(es_url, cloud_id=cloud_id, api_key=api_key):
+        if cloud_id or args.no_docker:
             logger.error(
-                "Elasticsearch is not reachable at %s and --no-docker was set. "
-                "Start Elasticsearch manually and retry.",
-                es_url,
+                "Elasticsearch is not reachable at %s. "
+                "Check your connection settings and retry.",
+                es_target,
             )
             sys.exit(1)
 
@@ -220,7 +239,7 @@ def main() -> None:
 
     from src.search.es_client import wait_for_elasticsearch
 
-    if not wait_for_elasticsearch(es_url):
+    if not wait_for_elasticsearch(es_url, cloud_id=cloud_id, api_key=api_key):
         logger.error("Elasticsearch not available after waiting. Exiting.")
         sys.exit(1)
 
@@ -308,11 +327,10 @@ def main() -> None:
 
         # Step 5: Index into Elasticsearch
         logger.info("Step 5/6: Indexing into Elasticsearch...")
-        from elasticsearch import Elasticsearch
-
+        from src.search.es_client import create_es_client as _create_es
         from src.search.indexer import create_index, index_pets
 
-        es = Elasticsearch(es_url)
+        es = _create_es(url=es_url, cloud_id=cloud_id, api_key=api_key)
         create_index(es, config.index_name)
         indexed = index_pets(
             es, all_records, text_embeddings, image_embeddings,

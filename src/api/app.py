@@ -25,7 +25,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     config = get_config()
 
     app.state.config = config
-    app.state.es_client = create_es_client(config.elasticsearch_url)
+    app.state.es_client = create_es_client(
+        url=config.elasticsearch_url,
+        cloud_id=config.elasticsearch_cloud_id,
+        api_key=config.elasticsearch_api_key,
+    )
     app.state.clip_encoder = CLIPEncoder(
         model_name=config.clip_model_name,
         pretrained=config.clip_pretrained,

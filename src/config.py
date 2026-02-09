@@ -22,6 +22,12 @@ class Config:
     elasticsearch_url: str = field(
         default_factory=lambda: os.getenv("ELASTICSEARCH_URL", "http://localhost:9200")
     )
+    elasticsearch_cloud_id: str | None = field(
+        default_factory=lambda: os.getenv("ELASTICSEARCH_CLOUD_ID")
+    )
+    elasticsearch_api_key: str | None = field(
+        default_factory=lambda: os.getenv("ELASTICSEARCH_API_KEY")
+    )
     index_name: str = "pets"
 
     # CLIP model

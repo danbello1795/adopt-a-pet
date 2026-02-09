@@ -1,0 +1,62 @@
+# Cloud Run optimized build: pre-downloads CLIP model and bakes Oxford images
+# into the image to avoid cold-start downloads.
+#
+# Build:
+#   docker build -t adopt-a-pet-cloudrun -f docker/Dockerfile.cloudrun .
+#
+# Run locally:
+#   docker run -p 8080:8080 \
+#     -e ELASTICSEARCH_CLOUD_ID=... \
+#     -e ELASTICSEARCH_API_KEY=... \
+#     adopt-a-pet-cloudrun
+
+FROM python:3.12-slim AS builder
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
+COPY pyproject.toml uv.lock ./
+
+ENV UV_EXTRA_INDEX_URL=https://download.pytorch.org/whl/cpu
+ENV UV_LINK_MODE=copy
+
+RUN uv sync --frozen --no-dev --no-editable
+
+COPY . .
+
+# Pre-download CLIP model weights so they are cached in the image
+RUN .venv/bin/python -c "\
+import open_clip; \
+open_clip.create_model_and_transforms('ViT-B-32', pretrained='laion2b_s34b_b79k')"
+
+# ---------------------------------------------------------------------------
+FROM python:3.12-slim AS runtime
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy app + venv from builder
+COPY --from=builder /app /app
+
+# Copy HuggingFace/torch model cache from builder
+COPY --from=builder /root/.cache /root/.cache
+
+RUN mkdir -p /app/data
+
+ENV PATH="/app/.venv/bin:$PATH"
+ENV PORT=8080
+
+EXPOSE 8080
+
+# Skip download and indexing — data is already indexed in Elastic Cloud.
+# Skip docker — no local ES container needed.
+CMD ["python", "main.py", "--skip-download", "--skip-index", "--no-docker"]

@@ -1,0 +1,11 @@
+.git
+.venv
+__pycache__
+*.pyc
+data/petfinder
+.env
+.pytest_cache
+htmlcov
+.mypy_cache
+.ruff_cache
+nul
