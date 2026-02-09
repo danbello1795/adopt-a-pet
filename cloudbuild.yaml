@@ -13,5 +13,5 @@ images:
   - 'us-central1-docker.pkg.dev/balmy-parser-453908-b2/adopt-a-pet/app:v1'
 timeout: 3600s
 options:
-  machineType: 'N1_HIGHCPU_8'  # Faster CPUs, better I/O than E2
-  diskSizeGb: 100  # Larger disk for better I/O
+  machineType: 'E2_HIGHCPU_8'
+  diskSizeGb: 100
