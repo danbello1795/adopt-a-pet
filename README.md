@@ -1,11 +1,13 @@
-https://github.com/user-attachments/assets/55f045f4-2764-4c39-8a41-c6e4ae401b0e
-
 # Adopt-a-Pet: Cross-Modal Pet Search
 
 Cross-modal pet search system using CLIP embeddings and Elasticsearch kNN. Search for adoptable pets by text description or by uploading a photo.
 
-> **Live demo**: [adopt-a-pet-577450633487.us-central1.run.app](https://adopt-a-pet-577450633487.us-central1.run.app) (full dataset, ~21,989 pets)
->
+---
+
+https://github.com/user-attachments/assets/55f045f4-2764-4c39-8a41-c6e4ae401b0e
+
+**Live demo**: [adopt-a-pet-577450633487.us-central1.run.app](https://adopt-a-pet-577450633487.us-central1.run.app) (full dataset, ~21,989 pets)
+
 > ⏱️ **Note**: The first access after inactivity may take 10-15 seconds to load the CLIP model (~600 MB). Subsequent searches are instant (<1s).
 
 Two deployment versions are available:
