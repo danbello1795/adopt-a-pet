@@ -14,58 +14,56 @@ Two deployment versions are available:
 
 ## Architecture
 
-```
-                        +------------------+
-                        |  User (Browser)  |
-                        +--------+---------+
-                                 |
-                    Text query   |   Image upload
-                    (GET /search)|   (POST /search/image)
-                                 |
-                        +--------v---------+
-                        | FastAPI + Jinja2 |
-                        |   (port 8000)    |
-                        +--------+---------+
-                                 |
-                        +--------v---------+
-                        |   PetSearcher    |
-                        +--------+---------+
-                                 |
-              +------------------+------------------+
-              |                                     |
-   +----------v-----------+             +-----------v----------+
-   |     CLIPEncoder      |             |   Elasticsearch 8.x  |
-   |  (ViT-B-32, 512-dim) |             |   (kNN dense_vector) |
-   |                      |             |                      |
-   | encode_text()        |             | text_embedding (512d)|
-   | encode_single_image()|             | image_embedding(512d)|
-   +----------------------+             +----------------------+
+```mermaid
+graph TB
+    User[👤 User Browser]
+    API[FastAPI + Jinja2<br/>Port 8000]
+    Searcher[PetSearcher]
+    CLIP[CLIPEncoder<br/>ViT-B-32, 512-dim]
+    ES[Elasticsearch 8.x<br/>kNN dense_vector]
+
+    User -->|Text query / Image upload| API
+    API --> Searcher
+    Searcher --> CLIP
+    Searcher --> ES
+    CLIP -->|encode_text<br/>encode_image| ES
+    ES -->|text_embedding 512d<br/>image_embedding 512d| Searcher
 ```
 
 ### Search Flows
 
 **Text Search** (e.g., "playful ginger cat"):
 
-```
-Query --> CLIP text encoder --> 512-dim vector
-  |
-  +--> kNN (source: petfinder) --> Adoption Listings (10 results)
-  |    text_embedding boost=1.5, image_embedding boost=1.0
-  |
-  +--> kNN (60% petfinder + 40% oxford) --> Similar Images (10 results)
-       text_embedding boost=1.5, image_embedding boost=1.0
+```mermaid
+flowchart LR
+    Q["🔍 Query: playful ginger cat"]
+    CLIP[CLIP Text Encoder]
+    V[512-dim vector]
+    KNN1[kNN Query 1<br/>source: petfinder<br/>text boost=1.5]
+    KNN2[kNN Query 2<br/>60% PF + 40% Oxford<br/>text boost=1.5]
+    L[📋 Adoption Listings<br/>10 results]
+    I[🖼️ Similar Images<br/>10 results]
+
+    Q --> CLIP --> V
+    V --> KNN1 --> L
+    V --> KNN2 --> I
 ```
 
 **Image Search** (upload a pet photo):
 
-```
-Photo --> CLIP image encoder --> 512-dim vector
-  |
-  +--> kNN (60% petfinder + 40% oxford) --> Similar Images (10 results)
-  |    image_embedding boost=2.0, text_embedding boost=0.5
-  |
-  +--> kNN (source: petfinder) --> Adoption Listings (10 results)
-       image_embedding boost=2.0, text_embedding boost=0.5
+```mermaid
+flowchart LR
+    P[📷 Photo Upload]
+    CLIP[CLIP Image Encoder]
+    V[512-dim vector]
+    KNN1[kNN Query 1<br/>60% PF + 40% Oxford<br/>image boost=2.0]
+    KNN2[kNN Query 2<br/>source: petfinder<br/>image boost=2.0]
+    I[🖼️ Similar Images<br/>10 results]
+    L[📋 Adoption Listings<br/>10 results]
+
+    P --> CLIP --> V
+    V --> KNN1 --> I
+    V --> KNN2 --> L
 ```
 
 Each search returns two sections: **Adoption Listings** (PetFinder records with descriptions, breed, age, gender) and **Similar Pet Images** (from both PetFinder and Oxford-IIIT, labeled by source).
