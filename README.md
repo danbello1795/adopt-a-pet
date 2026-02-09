@@ -1,8 +1,15 @@
-https://github.com/user-attachments/assets/55f045f4-2764-4c39-8a41-c6e4ae401b0e
-
 # Adopt-a-Pet: Cross-Modal Pet Search
 
+![Python](https://img.shields.io/badge/python-3.12%2B-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-009688)
+![Elasticsearch](https://img.shields.io/badge/Elasticsearch-8.12-005571)
+
 Cross-modal pet search system using CLIP embeddings and Elasticsearch kNN. Search for adoptable pets by text description or by uploading a photo.
+
+---
+
+https://github.com/user-attachments/assets/55f045f4-2764-4c39-8a41-c6e4ae401b0e
 
 > **Live demo**: [adopt-a-pet-577450633487.us-central1.run.app](https://adopt-a-pet-577450633487.us-central1.run.app) (full dataset, ~21,989 pets)
 >
