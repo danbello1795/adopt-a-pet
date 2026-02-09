@@ -35,8 +35,11 @@ class Config:
     random_seed: int = 42
 
     # Search
-    default_top_k: int = 20
+    default_top_k: int = 10
     knn_num_candidates: int = 100
+
+    # Images
+    image_base_url: str = "/images"
 
     # Server
     host: str = field(default_factory=lambda: os.getenv("HOST", "0.0.0.0"))
