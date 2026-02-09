@@ -41,5 +41,13 @@ class SearchResponse(BaseModel):
     query: str = Field(description="Original search query or '[uploaded image]'")
     query_type: str = Field(description="'text' or 'image'")
     results: list[SearchResult] = Field(default_factory=list)
+    listings: list[SearchResult] = Field(
+        default_factory=list,
+        description="PetFinder adoption listings (text-focused results)",
+    )
+    images: list[SearchResult] = Field(
+        default_factory=list,
+        description="Pet image results from all sources",
+    )
     total_hits: int = Field(default=0)
     search_time_ms: float = Field(default=0.0)
