@@ -1,18 +1,72 @@
-# MLE Test: Adopt a Pet
+https://github.com/user-attachments/assets/55f045f4-2764-4c39-8a41-c6e4ae401b0e
+
+# Adopt-a-Pet: Cross-Modal Pet Search
 
 Cross-modal pet search system using CLIP embeddings and Elasticsearch kNN. Search for adoptable pets by text description or by uploading a photo.
+
+> **Live demo**: [adopt-a-pet-577450633487.us-central1.run.app](https://adopt-a-pet-577450633487.us-central1.run.app) (full dataset, ~21,989 pets)
+
+Two deployment versions are available:
+- **Local** (`main` branch): sampled dataset (~1,500 pets), Docker Compose with local Elasticsearch
+- **Cloud** (`deploy` branch): full dataset (~21,989 pets), Cloud Run + Elastic Cloud + GCS
 
 ## Architecture
 
 ```
-Browser --> FastAPI + Jinja2 UI --> PetSearcher
-                                      |
-                                      +-- CLIPEncoder (ViT-B-32, 512-dim)
-                                      +-- Elasticsearch 8.x (kNN dense_vector)
+                        +------------------+
+                        |  User (Browser)  |
+                        +--------+---------+
+                                 |
+                    Text query   |   Image upload
+                    (GET /search)|   (POST /search/image)
+                                 |
+                        +--------v---------+
+                        | FastAPI + Jinja2 |
+                        |   (port 8000)    |
+                        +--------+---------+
+                                 |
+                        +--------v---------+
+                        |   PetSearcher    |
+                        +--------+---------+
+                                 |
+              +------------------+------------------+
+              |                                     |
+   +----------v-----------+             +-----------v----------+
+   |     CLIPEncoder      |             |   Elasticsearch 8.x  |
+   |  (ViT-B-32, 512-dim) |             |   (kNN dense_vector) |
+   |                      |             |                      |
+   | encode_text()        |             | text_embedding (512d)|
+   | encode_single_image()|             | image_embedding(512d)|
+   +----------------------+             +----------------------+
 ```
 
-- **Text search**: query -> CLIP text encoder -> kNN on text_embedding (boost=1.5) + image_embedding (boost=1.0)
-- **Image search**: upload -> CLIP image encoder -> kNN on image_embedding (boost=2.0) + text_embedding (boost=0.5)
+### Search Flows
+
+**Text Search** (e.g., "playful ginger cat"):
+
+```
+Query --> CLIP text encoder --> 512-dim vector
+  |
+  +--> kNN (source: petfinder) --> Adoption Listings (10 results)
+  |    text_embedding boost=1.5, image_embedding boost=1.0
+  |
+  +--> kNN (60% petfinder + 40% oxford) --> Similar Images (10 results)
+       text_embedding boost=1.5, image_embedding boost=1.0
+```
+
+**Image Search** (upload a pet photo):
+
+```
+Photo --> CLIP image encoder --> 512-dim vector
+  |
+  +--> kNN (60% petfinder + 40% oxford) --> Similar Images (10 results)
+  |    image_embedding boost=2.0, text_embedding boost=0.5
+  |
+  +--> kNN (source: petfinder) --> Adoption Listings (10 results)
+       image_embedding boost=2.0, text_embedding boost=0.5
+```
+
+Each search returns two sections: **Adoption Listings** (PetFinder records with descriptions, breed, age, gender) and **Similar Pet Images** (from both PetFinder and Oxford-IIIT, labeled by source).
 
 ## Project Structure
 
@@ -23,24 +77,24 @@ adopt-a-pet/
 │   ├── data/
 │   │   ├── downloader.py          # Dataset download (Kaggle + HTTP)
 │   │   ├── processor.py           # Process, sample, merge datasets
-│   │   └── schemas.py             # Pydantic models
+│   │   └── schemas.py             # Pydantic models (PetRecord, SearchResponse)
 │   ├── embeddings/
 │   │   └── clip_encoder.py        # CLIP text/image encoder
 │   ├── search/
 │   │   ├── es_client.py           # Elasticsearch connection
 │   │   ├── indexer.py             # Index creation, bulk indexing
-│   │   └── searcher.py            # kNN search engine
+│   │   └── searcher.py            # kNN search engine (split results)
 │   └── api/
 │       ├── app.py                 # FastAPI app factory
-│       ├── routes.py              # API routes
-│       └── templates/             # Jinja2 HTML templates
-├── tests/                         # Test suite (85 tests)
+│       ├── routes.py              # API routes + featured pets
+│       └── templates/             # Jinja2 HTML templates (Tailwind CSS)
+├── tests/                         # Test suite (85 tests, 9 test files)
 ├── docs/
 │   └── technical_design.md        # Full technical design document
 ├── docker/
 │   └── Dockerfile                 # Multi-stage Python 3.12 build
 ├── docker-compose.yml             # ES + App services
-├── main.py                        # Single entry point
+├── main.py                        # Single entry point (6-step pipeline)
 ├── pyproject.toml                 # Dependencies and tool config
 └── .env.example                   # Environment variable template
 ```
@@ -51,7 +105,7 @@ adopt-a-pet/
 
 - Python 3.12+
 - Docker (for Elasticsearch)
-- Kaggle API credentials (optional, for PetFinder dataset — [setup guide](https://www.kaggle.com/settings))
+- Kaggle API credentials (optional, for PetFinder dataset -- [setup guide](https://www.kaggle.com/settings))
 
 ### One-command launch
 
@@ -74,7 +128,7 @@ them, and launches the web UI at **http://localhost:8000**.
 
 > **Note:** Kaggle credentials are only needed for PetFinder data. Without them,
 > the pipeline continues with the Oxford-IIIT dataset alone (~500 records).
-> To enable PetFinder, the `KAGGLE_KEY` is already configured in `.env`.
+> To enable PetFinder, set `KAGGLE_KEY` in `.env`.
 
 ### Full Docker Compose (app + ES in containers)
 
@@ -100,7 +154,7 @@ docker compose up
 | 3 | Process and merge datasets into `PetRecord` objects | `--skip-index` |
 | 4 | Generate CLIP embeddings (text + image) | `--skip-index` |
 | 5 | Bulk-index documents into Elasticsearch | `--skip-index` |
-| 6 | Launch FastAPI web UI | — |
+| 6 | Launch FastAPI web UI | -- |
 
 ### CLI Options
 
@@ -114,22 +168,41 @@ uv run python main.py --host 127.0.0.1      # Custom server host
 uv run python main.py --es-url http://...   # Custom Elasticsearch URL
 ```
 
+## Deployment Versions
+
+| Aspect | Local (`main` branch) | Cloud (`deploy` branch) |
+|--------|-----------------------|-------------------------|
+| Pets indexed | ~1,500 (sampled) | ~21,989 (full dataset) |
+| Elasticsearch | Local Docker container (8.12.0) | Elastic Cloud (managed) |
+| Image storage | Local filesystem (FastAPI StaticFiles) | Google Cloud Storage (GCS) |
+| CLIP model | Downloaded at first run (~600 MB) | Pre-cached in Docker image |
+| Build system | Local Python + Docker Compose | Cloud Build + Artifact Registry |
+| URL | http://localhost:8000 | [adopt-a-pet-577450633487.us-central1.run.app](https://adopt-a-pet-577450633487.us-central1.run.app) |
+
 ## Data Sources
 
-| Source | Records | Description |
-|--------|---------|-------------|
-| [PetFinder.my](https://www.kaggle.com/c/petfinder-adoption-prediction) | ~1000 | Real adoption listings with descriptions and photos |
-| [Oxford-IIIT Pet Dataset](https://www.robots.ox.ac.uk/~vgg/data/pets/) | ~500 | Breed-labeled pet photos with synthetic descriptions |
+| Source | Local (sampled) | Cloud (full) | Content |
+|--------|----------------|--------------|---------|
+| [PetFinder.my](https://www.kaggle.com/c/petfinder-adoption-prediction) | ~1,000 | ~14,993 | Real adoption listings with descriptions, breed, age, gender, photos |
+| [Oxford-IIIT Pet Dataset](https://www.robots.ox.ac.uk/~vgg/data/pets/) | ~500 | ~7,349 | Breed-labeled pet photos (37 breeds) with synthetic descriptions |
+
+## Search Results
+
+Each query returns two result sections:
+
+- **Adoption Listings** (10 results): PetFinder records shown as horizontal cards with photo, name, breed, age, gender, and description. These are real adoption listings with detailed metadata.
+
+- **Similar Pet Images** (10 results): Images from both PetFinder and Oxford-IIIT datasets, shown in a compact grid. Each image displays a **source badge** (PetFinder or Oxford) to label its dataset origin. Results are mixed using source-filtered kNN queries (60% PetFinder, 40% Oxford) to guarantee representation from both datasets.
 
 ## API Endpoints
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/` | Home page with search UI |
-| GET | `/search?q=friendly+cat` | Text search (HTML) |
-| POST | `/search/image` | Image upload search (HTML) |
-| GET | `/api/search?q=cat&top_k=10` | Text search (JSON) |
-| GET | `/health` | Health check |
+| GET | `/` | Home page with text search, image upload, and featured pets |
+| GET | `/search?q=friendly+cat&top_k=10` | Text search (HTML, returns listings + images) |
+| POST | `/search/image` | Image upload search (HTML, returns images + listings) |
+| GET | `/api/search?q=cat&top_k=10` | Text search (JSON API) |
+| GET | `/health` | Health check (Elasticsearch connectivity) |
 
 ## Development
 
@@ -138,6 +211,8 @@ uv run python main.py --es-url http://...   # Custom Elasticsearch URL
 ```bash
 uv run pytest tests/ -v --cov=src
 ```
+
+85 tests across 9 test files covering: data processing, CLIP encoding, API routes, Elasticsearch indexing, schemas, search engine, configuration, and downloads. All external dependencies (Elasticsearch, CLIP model, Kaggle) are mocked for fast offline testing.
 
 ### Code Quality
 
@@ -149,11 +224,15 @@ uv run ruff check src/ tests/
 
 ### Tech Stack
 
-- **ML**: open-clip-torch (ViT-B-32), PyTorch, Pillow
-- **Search**: Elasticsearch 8.12.0 (kNN dense_vector, cosine similarity), elasticsearch-py 8.x
-- **Web**: FastAPI, Jinja2, Tailwind CSS
-- **Data**: pandas, Pydantic, Kaggle API
-- **Testing**: pytest, httpx, 85 tests with mocked dependencies
+| Layer | Technology |
+|-------|-----------|
+| ML | open-clip-torch (ViT-B-32, LAION-2B pretrained), PyTorch, Pillow |
+| Search | Elasticsearch 8.12.0 (kNN dense_vector, cosine similarity), elasticsearch-py 8.x |
+| Web | FastAPI, Jinja2, Tailwind CSS (dark theme) |
+| Data | pandas, Pydantic v2, Kaggle REST API |
+| Testing | pytest (85 tests), httpx, pytest-cov |
+| Infrastructure | Docker Compose (local), Cloud Run + Cloud Build + Elastic Cloud + GCS (cloud) |
+| Packaging | uv, hatchling, pyproject.toml |
 
 ### Troubleshooting
 
@@ -164,4 +243,21 @@ uv run ruff check src/ tests/
 | Port 8000 already in use | Use `--port 9000` or stop the process on 8000 |
 | ES client returns 400 | Ensure `elasticsearch` Python package is `<9` (pinned in pyproject.toml). Client 9.x is not compatible with ES 8.x |
 
-For detailed technical decisions and design rationale, see [docs/technical_design.md](docs/technical_design.md).
+## Design Decisions and Trade-offs
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| CLIP model | ViT-B-32 (LAION-2B) | Good balance of speed and quality; 512-dim vectors keep ES index small |
+| Dual kNN with boosting | text_embedding + image_embedding per query | Text queries benefit from text-text alignment; image queries from image-image alignment |
+| Source-filtered queries | Separate kNN queries per source | Guarantees representation from both PetFinder and Oxford datasets |
+| Split results | Listings + Images sections | Matches the challenge spec: text -> listings + images; image -> images + listings |
+| Elasticsearch (not FAISS) | ES 8.x native kNN | Required by challenge; also provides filtering, metadata storage, and scalability |
+| CPU-only PyTorch | No CUDA in Docker | ~2 GB image vs ~5 GB with CUDA; sufficient for inference |
+
+For the full technical design document, see [docs/technical_design.md](docs/technical_design.md).
+
+## Contact
+
+**Daniel Bello** -- daniel.bello1795@gmail.com
+
+For questions, comments, or additional information about this project, feel free to reach out.
