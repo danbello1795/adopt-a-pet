@@ -23,7 +23,9 @@ import platform
 import shutil
 import subprocess
 import sys
+import threading
 import time
+import webbrowser
 
 from dotenv import load_dotenv
 
@@ -161,6 +163,22 @@ def _find_compose_command() -> list[str] | None:
         return ["docker-compose"]
 
     return None
+
+
+def _open_browser(url: str, delay: float = 2.0) -> None:
+    """Open browser after a delay to give the server time to start.
+
+    Args:
+        url: URL to open in the browser.
+        delay: Seconds to wait before opening.
+    """
+    def _delayed_open():
+        time.sleep(delay)
+        logger.info("Opening browser at %s", url)
+        webbrowser.open(url)
+
+    thread = threading.Thread(target=_delayed_open, daemon=True)
+    thread.start()
 
 
 # ---------------------------------------------------------------------------
@@ -330,6 +348,11 @@ def main() -> None:
     from src.api.app import create_app
 
     app = create_app()
+
+    # Open browser automatically
+    url = f"http://localhost:{args.port}"
+    _open_browser(url)
+
     uvicorn.run(app, host=args.host, port=args.port)
 
 
