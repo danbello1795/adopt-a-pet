@@ -105,9 +105,12 @@ adopt-a-pet/
 
 ### Prerequisites
 
-- Python 3.12+
-- Docker (for Elasticsearch)
-- Kaggle API credentials (optional, for PetFinder dataset -- [setup guide](https://www.kaggle.com/settings))
+- **Python 3.12+** installed
+- **Docker** installed and running
+  - **Linux**: Ensure Docker daemon is running: `sudo systemctl start docker`
+  - **Windows**: Docker Desktop will auto-start if not running
+  - **macOS**: Docker Desktop must be running
+
 
 ### One-command launch
 
@@ -128,9 +131,7 @@ Desktop is not running, it will launch it automatically and wait for the daemon
 to be ready. Then it downloads the datasets, generates CLIP embeddings, indexes
 them, and launches the web UI at **http://localhost:8000**.
 
-> **Note:** Kaggle credentials are only needed for PetFinder data. Without them,
-> the pipeline continues with the Oxford-IIIT dataset alone (~500 records).
-> To enable PetFinder, set `KAGGLE_KEY` in `.env`.
+
 
 ### Full Docker Compose (app + ES in containers)
 
