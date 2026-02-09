@@ -66,8 +66,11 @@ def process_petfinder(
         len(valid_df),
     )
 
-    sample_size = min(sample_size, len(valid_df))
-    sampled = valid_df.sample(n=sample_size, random_state=random_seed)
+    if sample_size > 0:
+        sample_size = min(sample_size, len(valid_df))
+        sampled = valid_df.sample(n=sample_size, random_state=random_seed)
+    else:
+        sampled = valid_df
 
     images_dir = _find_images_dir(petfinder_dir)
 
@@ -148,9 +151,12 @@ def process_oxford(
         len(valid_records),
     )
 
-    sample_size = min(sample_size, len(valid_records))
     df = pd.DataFrame(valid_records)
-    sampled = df.sample(n=sample_size, random_state=random_seed)
+    if sample_size > 0:
+        sample_size = min(sample_size, len(valid_records))
+        sampled = df.sample(n=sample_size, random_state=random_seed)
+    else:
+        sampled = df
 
     records = []
     for _, row in sampled.iterrows():

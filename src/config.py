@@ -35,14 +35,23 @@ class Config:
     clip_pretrained: str = "laion2b_s34b_b79k"
     embedding_dim: int = 512
 
-    # Data sampling
-    petfinder_sample_size: int = 1000
-    oxford_sample_size: int = 500
+    # Data sampling (0 = no limit, use all valid records)
+    petfinder_sample_size: int = field(
+        default_factory=lambda: int(os.getenv("PETFINDER_SAMPLE_SIZE", "0"))
+    )
+    oxford_sample_size: int = field(
+        default_factory=lambda: int(os.getenv("OXFORD_SAMPLE_SIZE", "0"))
+    )
     random_seed: int = 42
 
     # Search
     default_top_k: int = 20
     knn_num_candidates: int = 100
+
+    # Images
+    image_base_url: str = field(
+        default_factory=lambda: os.getenv("IMAGE_BASE_URL", "/images")
+    )
 
     # Server
     host: str = field(default_factory=lambda: os.getenv("HOST", "0.0.0.0"))

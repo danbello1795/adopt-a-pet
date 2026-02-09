@@ -1,0 +1,60 @@
+# Download pet images from original sources and upload to GCS.
+# Uses Google Cloud Build's fast network instead of local upload.
+#
+# Usage:
+#   gcloud builds submit --no-source --config=cloudbuild-images.yaml \
+#     --substitutions=_KAGGLE_KEY=your-kaggle-key
+
+steps:
+  # Step 1: Download Oxford-IIIT images (public) and upload to GCS
+  - name: 'google/cloud-sdk:slim'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "=== Downloading Oxford-IIIT Pet images ==="
+        curl -L -o /tmp/images.tar.gz \
+          https://thor.robots.ox.ac.uk/~vgg/data/pets/images.tar.gz
+        echo "=== Extracting ==="
+        mkdir -p /tmp/oxford
+        tar -xzf /tmp/images.tar.gz -C /tmp/oxford/
+        rm /tmp/images.tar.gz
+        echo "=== Uploading to GCS ==="
+        gsutil -m rsync -r /tmp/oxford/images/ gs://adopt-a-pet-images-577450633487/oxford/
+        echo "=== Oxford done ==="
+
+  # Step 2: Download PetFinder images (Kaggle auth) and upload to GCS
+  - name: 'google/cloud-sdk:slim'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        apt-get update -qq && apt-get install -y -qq unzip > /dev/null 2>&1
+        echo "=== Downloading PetFinder from Kaggle API ==="
+        curl -L -H "Authorization: Bearer ${_KAGGLE_KEY}" \
+          "https://www.kaggle.com/api/v1/competitions/data/download-all/petfinder-adoption-prediction" \
+          -o /tmp/petfinder.zip
+        echo "=== Extracting ==="
+        mkdir -p /tmp/petfinder
+        unzip -q -o /tmp/petfinder.zip -d /tmp/petfinder/
+        rm /tmp/petfinder.zip
+        # Handle nested directory (train/train_images or train_images)
+        if [ -d "/tmp/petfinder/train_images" ]; then
+          IMG_DIR=/tmp/petfinder/train_images
+        elif [ -d "/tmp/petfinder/train/train_images" ]; then
+          IMG_DIR=/tmp/petfinder/train/train_images
+        else
+          echo "ERROR: Could not find train_images directory"
+          ls -laR /tmp/petfinder/ | head -50
+          exit 1
+        fi
+        echo "=== Uploading PetFinder images to GCS ==="
+        gsutil -m rsync -r $${IMG_DIR} gs://adopt-a-pet-images-577450633487/petfinder/
+        echo "=== PetFinder done ==="
+
+substitutions:
+  _KAGGLE_KEY: ''
+
+timeout: 3600s
+options:
+  machineType: 'E2_HIGHCPU_8'

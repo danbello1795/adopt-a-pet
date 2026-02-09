@@ -64,10 +64,11 @@
     <div class="group bg-dark-800/60 backdrop-blur-sm rounded-2xl border border-white/5 hover:border-white/15 hover:shadow-xl hover:shadow-amber-500/5 hover:-translate-y-1 transition-all duration-300 overflow-hidden">
         <!-- Pet image -->
         <div class="aspect-square bg-dark-900 relative overflow-hidden">
+            {% set image_base = request.app.state.config.image_base_url %}
             {% if result.pet.source == "petfinder" %}
                 {% set img_filename = result.pet.image_path.split("/")[-1].split("\\")[-1] %}
                 <img
-                    src="/images/petfinder/{{ img_filename }}"
+                    src="{{ image_base }}/petfinder/{{ img_filename }}"
                     alt="{{ result.pet.name }}"
                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     loading="lazy"
@@ -76,7 +77,7 @@
             {% else %}
                 {% set img_filename = result.pet.image_path.split("/")[-1].split("\\")[-1] %}
                 <img
-                    src="/images/oxford/{{ img_filename }}"
+                    src="{{ image_base }}/oxford/{{ img_filename }}"
                     alt="{{ result.pet.breed }}"
                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     loading="lazy"
