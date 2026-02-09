@@ -10,6 +10,7 @@
 #     -e ELASTICSEARCH_API_KEY=... \
 #     adopt-a-pet-cloudrun
 
+# syntax=docker/dockerfile:1.4
 FROM python:3.12-slim AS builder
 
 WORKDIR /app
@@ -26,7 +27,9 @@ COPY pyproject.toml uv.lock ./
 ENV UV_EXTRA_INDEX_URL=https://download.pytorch.org/whl/cpu
 ENV UV_LINK_MODE=copy
 
-RUN uv sync --frozen --no-dev --no-editable
+# Use cache mounts to speed up package downloads
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev --no-editable
 
 COPY . .
 
