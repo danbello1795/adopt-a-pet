@@ -15,5 +15,3 @@ timeout: 3600s
 options:
   machineType: 'N1_HIGHCPU_8'  # Faster CPUs, better I/O than E2
   diskSizeGb: 100  # Larger disk for better I/O
-substitutions:
-  _DOCKER_BUILDKIT: '1'
